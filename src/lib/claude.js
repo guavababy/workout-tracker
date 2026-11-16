@@ -1,5 +1,3 @@
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
-
 export async function getWorkoutRecommendation(recentWorkouts) {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
@@ -13,20 +11,7 @@ export async function getWorkoutRecommendation(recentWorkouts) {
     return `${date}:\n${exercises || '  (no exercises logged)'}`
   }).join('\n\n')
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-5-5',
-      max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: `You are a personal trainer. Based on this recent workout history, recommend a workout for today (${today}).
+  const prompt = `You are a personal trainer. Based on this recent workout history, recommend a workout for today (${today}).
 
 Recent workouts:
 ${workoutSummary}
@@ -42,15 +27,15 @@ Respond with JSON only (no markdown, no code fences):
   ]
 }
 
-rest_seconds should reflect the goal: ~60s for hypertrophy/pump work, ~90-120s for moderate strength, ~180-300s for heavy compound lifts.`,
-      }],
-    }),
+rest_seconds should reflect the goal: ~60s for hypertrophy/pump work, ~90-120s for moderate strength, ~180-300s for heavy compound lifts.`
+
+  const res = await fetch('/api/suggest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
   })
 
   const raw = await res.text()
-  console.log('Claude API status:', res.status)
-  console.log('Claude API response:', raw)
-
   if (!res.ok) {
     let msg = `HTTP ${res.status}: ${raw}`
     try { msg = JSON.parse(raw)?.error?.message || msg } catch {}
