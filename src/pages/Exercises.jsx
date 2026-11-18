@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Plus, X } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
 import { MUSCLE_GROUPS } from '../lib/exercises.js'
+
+const CATEGORIES = ['Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Other']
+const MG_OPTIONS = MUSCLE_GROUPS.filter(g => g !== 'All')
 
 export default function Exercises() {
   const [exercises, setExercises] = useState([])
   const [search, setSearch] = useState('')
   const [group, setGroup] = useState('All')
   const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newMG, setNewMG] = useState('Chest')
+  const [newCat, setNewCat] = useState('Barbell')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     supabase.from('exercises').select('*').order('name').then(({ data }) => {
@@ -15,6 +23,25 @@ export default function Exercises() {
       setLoading(false)
     })
   }, [])
+
+  async function saveExercise() {
+    const name = newName.trim()
+    if (!name) return
+    setSaving(true)
+    const { data, error } = await supabase
+      .from('exercises')
+      .insert({ name, muscle_group: newMG, category: newCat })
+      .select()
+      .single()
+    setSaving(false)
+    if (!error && data) {
+      setExercises(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+      setShowCreate(false)
+      setNewName('')
+      setNewMG('Chest')
+      setNewCat('Barbell')
+    }
+  }
 
   const filtered = exercises.filter(ex => {
     const matchSearch = ex.name.toLowerCase().includes(search.toLowerCase())
@@ -31,7 +58,15 @@ export default function Exercises() {
   return (
     <div className="pt-14 pb-28">
       <div className="px-4 mb-4">
-        <h1 className="text-3xl font-bold mb-5">Exercises</h1>
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="text-3xl font-bold">Exercises</h1>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 bg-zinc-900 text-indigo-400 text-sm font-medium px-3 py-2 rounded-xl active:bg-zinc-800"
+          >
+            <Plus size={15} /> New
+          </button>
+        </div>
 
         <div className="flex items-center gap-2 bg-zinc-900 rounded-xl px-3 py-2.5 mb-3">
           <Search size={16} className="text-zinc-600 flex-shrink-0" />
@@ -86,6 +121,76 @@ export default function Exercises() {
             </div>
           )}
         </>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end">
+          <div className="bg-zinc-950 w-full rounded-t-3xl max-h-[90vh] flex flex-col max-w-lg mx-auto border-t border-zinc-800">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-800">
+              <h2 className="font-semibold text-lg">New Exercise</h2>
+              <button onClick={() => setShowCreate(false)}>
+                <X size={22} className="text-zinc-500" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">Name</label>
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="e.g. Romanian Deadlift"
+                  className="w-full bg-zinc-900 rounded-xl px-4 py-3 text-sm outline-none border border-zinc-800 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">Muscle Group</label>
+                <div className="flex flex-wrap gap-2">
+                  {MG_OPTIONS.map(mg => (
+                    <button
+                      key={mg}
+                      onClick={() => setNewMG(mg)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        newMG === mg ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      {mg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">Type</label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setNewCat(cat)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        newCat === cat ? 'bg-indigo-500 text-white' : 'bg-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 py-4 border-t border-zinc-800">
+              <button
+                onClick={saveExercise}
+                disabled={!newName.trim() || saving}
+                className="w-full py-4 bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white font-semibold rounded-2xl"
+              >
+                {saving ? 'Saving…' : 'Create Exercise'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

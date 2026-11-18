@@ -178,6 +178,13 @@ export default function ActiveWorkout() {
     }
   }
 
+  function removeSet(ei, si) {
+    setExercises(prev => prev.map((ex, i) => {
+      if (i !== ei || ex.sets.length <= 1) return ex
+      return { ...ex, sets: ex.sets.filter((_, j) => j !== si) }
+    }))
+  }
+
   function toggleBodyweight(ei) {
     setExercises(prev => prev.map((ex, i) => i !== ei ? ex : { ...ex, isBodyweight: !ex.isBodyweight }))
   }
@@ -382,6 +389,7 @@ export default function ActiveWorkout() {
             onToggleSuperset={() => toggleSuperset(ei)}
             onMoveUp={ei > 0 ? () => moveExercise(ei, -1) : null}
             onMoveDown={ei < exercises.length - 1 ? () => moveExercise(ei, 1) : null}
+            onRemoveSet={(si) => removeSet(ei, si)}
           />
         ))}
 
@@ -474,7 +482,7 @@ export default function ActiveWorkout() {
 function ExerciseBlock({
   exercise, previousPerformance, exerciseRecord, hasNext,
   onAddSet, onRemove, onUpdateSet, onToggleSet, onToggleBodyweight, onToggleSuperset,
-  onMoveUp, onMoveDown,
+  onMoveUp, onMoveDown, onRemoveSet,
 }) {
   function fmtPrevSet(s) {
     if (s.duration_seconds != null) return `${s.duration_seconds}s`
@@ -618,6 +626,14 @@ function ExerciseBlock({
               {set.completed && <Check size={14} className="text-white" />}
             </button>
           </div>
+          {exercise.sets.length > 1 && (
+            <button
+              onClick={() => onRemoveSet(si)}
+              className="w-6 flex justify-center text-zinc-800 active:text-red-400 ml-1"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       ))}
 
